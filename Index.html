@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Admin Panel</title>
+  <style>
+    body { font-family: 'Poppins', sans-serif; margin: 0; background: #000; color: #0ff; padding: 20px; }
+    h1 { text-align: center; text-shadow: 0 0 10px #0ff; }
+    .container { max-width: 700px; margin: auto; background: rgba(20, 20, 20, 0.9); border: 1px solid #0ff; border-radius: 12px; padding: 20px; box-shadow: 0 0 15px rgba(0, 255, 255, 0.4); }
+    label { display: block; margin-top: 10px; }
+    input, textarea { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #0ff; border-radius: 6px; background: #111; color: #0ff; }
+    button { margin-top: 10px; background: #0ff; color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    button:hover { background: #00f; color: #fff; }
+    .list { margin-top: 20px; }
+    .quiz-item, .subject-item { background: rgba(255, 255, 255, 0.05); margin: 8px 0; padding: 10px; border-radius: 6px; border: 1px solid #0ff; display: flex; justify-content: space-between; align-items: center; }
+    .actions button { margin-left: 5px; padding: 5px 8px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>⚡ Quiz Admin Panel</h1>
+  <div class="container">
+    <h2>Add / Edit Quiz Question</h2>
+    <label>Question</label>
+    <textarea id="question"></textarea>
+    <label>Options (comma separated)</label>
+    <input type="text" id="options" placeholder="Option1, Option2, Option3, Option4">
+    <label>Correct Answer Index (0-3)</label>
+    <input type="number" id="answer" min="0" max="3">
+    <label>Solution</label>
+    <textarea id="solution"></textarea>
+    <button id="addQuestion">Save Question</button>
+
+    <h2>Add / Edit Subjects</h2>
+    <label>Subject Name</label>
+    <input type="text" id="subjectName" placeholder="Enter subject">
+    <button id="addSubject">Save Subject</button>
+
+    <div class="list">
+      <h3>Existing Questions</h3>
+      <div id="quizList"></div>
+    </div>
+    <div class="list">
+      <h3>Subjects</h3>
+      <div id="subjectList"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0KSh__yrwZYDOKU85ltV-zOBpF6gLvm0",
+      authDomain: "quizapp-f1224.firebaseapp.com",
+      projectId: "quizapp-f1224",
+      storageBucket: "quizapp-f1224.firebasestorage.app",
+      messagingSenderId: "432922180972",
+      appId: "1:432922180972:web:e816869f5efc03f32f4749",
+      measurementId: "G-S3XZW4KSZ6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const questionInput = document.getElementById("question");
+    const optionsInput = document.getElementById("options");
+    const answerInput = document.getElementById("answer");
+    const solutionInput = document.getElementById("solution");
+    const quizListEl = document.getElementById("quizList");
+
+    const subjectInput = document.getElementById("subjectName");
+    const subjectListEl = document.getElementById("subjectList");
+
+    let editQuestionIndex = null;
+    let editSubjectIndex = null;
+
+    document.getElementById("addQuestion").onclick = async () => {
+      const q = questionInput.value.trim();
+      const opts = optionsInput.value.split(",").map(o => o.trim());
+      const ans = parseInt(answerInput.value);
+      const sol = solutionInput.value.trim();
+
+      if (!q || opts.length < 4 || isNaN(ans) || sol === "") {
+        alert("Please fill all question fields properly!");
+        return;
+      }
+
+      const quizRef = doc(db, "data", "quiz");
+      const snap = await getDoc(quizRef);
+      let questions = snap.exists() ? snap.data().questions || [] : [];
+
+      if (editQuestionIndex !== null) {
+        questions[editQuestionIndex] = { question: q, options: opts, answer: ans, solution: sol };
+        editQuestionIndex = null;
+      } else {
+        questions.push({ question: q, options: opts, answer: ans, solution: sol });
+      }
+
+      await setDoc(quizRef, { questions });
+      alert("✅ Question saved!");
+      resetQuestionForm();
+      loadQuiz();
+    };
+
+    document.getElementById("addSubject").onclick = async () => {
+      const subject = subjectInput.value.trim();
+      if (!subject) return alert("Enter a subject!");
+
+      const subjectRef = doc(db, "data", "subjects");
+      const snap = await getDoc(subjectRef);
+      let list = snap.exists() ? snap.data().list || [] : [];
+
+      if (editSubjectIndex !== null) {
+        list[editSubjectIndex] = subject;
+        editSubjectIndex = null;
+      } else {
+        list.push(subject);
+      }
+
+      await setDoc(subjectRef, { list });
+      alert("✅ Subject saved!");
+      subjectInput.value = "";
+      loadSubjects();
+    };
+
+    function resetQuestionForm() {
+      questionInput.value = "";
+      optionsInput.value = "";
+      answerInput.value = "";
+      solutionInput.value = "";
+    }
+
+    async function loadQuiz() {
+      const snap = await getDoc(doc(db, "data", "quiz"));
+      quizListEl.innerHTML = "";
+      if (snap.exists()) {
+        snap.data().questions.forEach((q, i) => {
+          const div = document.createElement("div");
+          div.className = "quiz-item";
+          div.innerHTML = `
+            <div><b>Q${i + 1}:</b> ${q.question}</div>
+            <div class="actions">
+              <button onclick="editQuestion(${i})">Edit</button>
+              <button onclick="deleteQuestion(${i})">Delete</button>
+            </div>`;
+          quizListEl.appendChild(div);
+        });
+      }
+    }
+
+    async function loadSubjects() {
+      const snap = await getDoc(doc(db, "data", "subjects"));
+      subjectListEl.innerHTML = "";
+      if (snap.exists()) {
+        snap.data().list.forEach((s, i) => {
+          const div = document.createElement("div");
+          div.className = "subject-item";
+          div.innerHTML = `
+            <div>${s}</div>
+            <div class="actions">
+              <button onclick="editSubject(${i})">Edit</button>
+              <button onclick="deleteSubject(${i})">Delete</button>
+            </div>`;
+          subjectListEl.appendChild(div);
+        });
+      }
+    }
+
+    window.editQuestion = async (index) => {
+      const snap = await getDoc(doc(db, "data", "quiz"));
+      if (snap.exists()) {
+        const q = snap.data().questions[index];
+        questionInput.value = q.question;
+        optionsInput.value = q.options.join(", ");
+        answerInput.value = q.answer;
+        solutionInput.value = q.solution;
+        editQuestionIndex = index;
+      }
+    };
+
+    window.deleteQuestion = async (index) => {
+      if (!confirm("Delete this question?")) return;
+      const quizRef = doc(db, "data", "quiz");
+      const snap = await getDoc(quizRef);
+      if (snap.exists()) {
+        let questions = snap.data().questions;
+        questions.splice(index, 1);
+        await setDoc(quizRef, { questions });
+        loadQuiz();
+      }
+    };
+
+    window.editSubject = async (index) => {
+      const snap = await getDoc(doc(db, "data", "subjects"));
+      if (snap.exists()) {
+        subjectInput.value = snap.data().list[index];
+        editSubjectIndex = index;
+      }
+    };
+
+    window.deleteSubject = async (index) => {
+      if (!confirm("Delete this subject?")) return;
+      const subjectRef = doc(db, "data", "subjects");
+      const snap = await getDoc(subjectRef);
+      if (snap.exists()) {
+        let list = snap.data().list;
+        list.splice(index, 1);
+        await setDoc(subjectRef, { list });
+        loadSubjects();
+      }
+    };
+
+    loadQuiz();
+    loadSubjects();
+  </script>
+</body>
+</html>
