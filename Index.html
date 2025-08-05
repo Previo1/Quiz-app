@@ -3,52 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quiz Admin Panel</title>
+  <title>Quiz App</title>
   <style>
-    body { font-family: 'Poppins', sans-serif; margin: 0; background: #000; color: #0ff; padding: 20px; }
-    h1 { text-align: center; text-shadow: 0 0 10px #0ff; }
-    .container { max-width: 700px; margin: auto; background: rgba(20, 20, 20, 0.9); border: 1px solid #0ff; border-radius: 12px; padding: 20px; box-shadow: 0 0 15px rgba(0, 255, 255, 0.4); }
-    label { display: block; margin-top: 10px; }
-    input, textarea { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #0ff; border-radius: 6px; background: #111; color: #0ff; }
-    button { margin-top: 10px; background: #0ff; color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    button:hover { background: #00f; color: #fff; }
-    .list { margin-top: 20px; }
-    .quiz-item, .subject-item { background: rgba(255, 255, 255, 0.05); margin: 8px 0; padding: 10px; border-radius: 6px; border: 1px solid #0ff; display: flex; justify-content: space-between; align-items: center; }
-    .actions button { margin-left: 5px; padding: 5px 8px; font-size: 12px; }
+    body { font-family: 'Poppins', sans-serif; margin: 0; background: #000; color: #0ff; text-align: center; }
+    h1 { text-shadow: 0 0 15px #0ff; }
+    .container { padding: 20px; }
+    .button { background: #0ff; color: #000; border: none; padding: 10px 20px; border-radius: 8px; margin: 5px; cursor: pointer; }
+    .button:hover { background: #00f; color: #fff; }
+    #quizCard, #subjectPage, #topicPage { display: none; }
+    .options button { display: block; width: 100%; margin: 10px 0; }
+    #wallet { font-size: 18px; margin-bottom: 10px; }
+    #progressBarContainer { width: 100%; height: 8px; background: rgba(255, 255, 255, 0.2); border-radius: 5px; margin-bottom: 10px; }
+    #progressBar { width: 100%; height: 100%; background: #0ff; border-radius: 5px; transition: width 1s linear; }
+    .footer { position: fixed; bottom: 0; width: 100%; background: rgba(20, 20, 20, 0.95); display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #0ff; }
+    .footer button { flex: 1; margin: 0 5px; padding: 10px; }
   </style>
 </head>
 <body>
-  <h1>⚡ Quiz Admin Panel</h1>
-  <div class="container">
-    <h2>Add / Edit Quiz Question</h2>
-    <label>Question</label>
-    <textarea id="question"></textarea>
-    <label>Options (comma separated)</label>
-    <input type="text" id="options" placeholder="Option1, Option2, Option3, Option4">
-    <label>Correct Answer Index (0-3)</label>
-    <input type="number" id="answer" min="0" max="3">
-    <label>Solution</label>
-    <textarea id="solution"></textarea>
-    <button id="addQuestion">Save Question</button>
+  <h1>⚡ Quiz App</h1>
+  <div id="wallet">💰 Coins: <span id="coins">0</span></div>
+  
+  <div id="subjectPage" class="container">
+    <h2>Select Subject</h2>
+    <div id="subjectList"></div>
+  </div>
 
-    <h2>Add / Edit Subjects</h2>
-    <label>Subject Name</label>
-    <input type="text" id="subjectName" placeholder="Enter subject">
-    <button id="addSubject">Save Subject</button>
+  <div id="topicPage" class="container">
+    <h2>Select Topic</h2>
+    <div id="topicList"></div>
+  </div>
 
-    <div class="list">
-      <h3>Existing Questions</h3>
-      <div id="quizList"></div>
-    </div>
-    <div class="list">
-      <h3>Subjects</h3>
-      <div id="subjectList"></div>
-    </div>
+  <div id="quizCard" class="container">
+    <h2 id="question"></h2>
+    <div id="timer">⏱ 10s</div>
+    <div id="progressBarContainer"><div id="progressBar"></div></div>
+    <div class="options" id="options"></div>
+    <div id="solution" style="margin-top:10px; color:#0f0;"></div>
+    <button class="button" onclick="nextQuestion()">Next</button>
+  </div>
+
+  <div id="referralPage" class="container" style="display:none;">
+    <h2>Referral System</h2>
+    <p>Your referral link:</p>
+    <input type="text" id="refLink" readonly style="width:100%; text-align:center;">
+    <p>Share this link with your friends! You earn 100 coins per referral.</p>
+  </div>
+
+  <div class="footer">
+    <button onclick="showPage('subjectPage')">📚 Subjects</button>
+    <button onclick="showPage('topicPage')">📖 Topics</button>
+    <button onclick="showPage('quizCard')">📝 Quiz</button>
+    <button onclick="showPage('referralPage')">🤝 Referral</button>
+    <button onclick="showPage('walletPage')">💰 Wallet</button>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD0KSh__yrwZYDOKU85ltV-zOBpF6gLvm0",
@@ -63,156 +74,142 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const questionInput = document.getElementById("question");
-    const optionsInput = document.getElementById("options");
-    const answerInput = document.getElementById("answer");
-    const solutionInput = document.getElementById("solution");
-    const quizListEl = document.getElementById("quizList");
-
-    const subjectInput = document.getElementById("subjectName");
     const subjectListEl = document.getElementById("subjectList");
+    const topicListEl = document.getElementById("topicList");
+    const questionEl = document.getElementById("question");
+    const optionsEl = document.getElementById("options");
+    const coinsEl = document.getElementById("coins");
+    const solutionEl = document.getElementById("solution");
+    const refLink = document.getElementById("refLink");
 
-    let editQuestionIndex = null;
-    let editSubjectIndex = null;
+    let coins = parseInt(localStorage.getItem("coins") || "0");
+    let questions = [];
+    let currentIndex = 0;
+    let timer = 10;
+    let timerInterval;
 
-    document.getElementById("addQuestion").onclick = async () => {
-      const q = questionInput.value.trim();
-      const opts = optionsInput.value.split(",").map(o => o.trim());
-      const ans = parseInt(answerInput.value);
-      const sol = solutionInput.value.trim();
+    coinsEl.textContent = coins;
 
-      if (!q || opts.length < 4 || isNaN(ans) || sol === "") {
-        alert("Please fill all question fields properly!");
-        return;
-      }
-
-      const quizRef = doc(db, "data", "quiz");
-      const snap = await getDoc(quizRef);
-      let questions = snap.exists() ? snap.data().questions || [] : [];
-
-      if (editQuestionIndex !== null) {
-        questions[editQuestionIndex] = { question: q, options: opts, answer: ans, solution: sol };
-        editQuestionIndex = null;
-      } else {
-        questions.push({ question: q, options: opts, answer: ans, solution: sol });
-      }
-
-      await setDoc(quizRef, { questions });
-      alert("✅ Question saved!");
-      resetQuestionForm();
-      loadQuiz();
-    };
-
-    document.getElementById("addSubject").onclick = async () => {
-      const subject = subjectInput.value.trim();
-      if (!subject) return alert("Enter a subject!");
-
-      const subjectRef = doc(db, "data", "subjects");
-      const snap = await getDoc(subjectRef);
-      let list = snap.exists() ? snap.data().list || [] : [];
-
-      if (editSubjectIndex !== null) {
-        list[editSubjectIndex] = subject;
-        editSubjectIndex = null;
-      } else {
-        list.push(subject);
-      }
-
-      await setDoc(subjectRef, { list });
-      alert("✅ Subject saved!");
-      subjectInput.value = "";
-      loadSubjects();
-    };
-
-    function resetQuestionForm() {
-      questionInput.value = "";
-      optionsInput.value = "";
-      answerInput.value = "";
-      solutionInput.value = "";
-    }
-
-    async function loadQuiz() {
-      const snap = await getDoc(doc(db, "data", "quiz"));
-      quizListEl.innerHTML = "";
-      if (snap.exists()) {
-        snap.data().questions.forEach((q, i) => {
-          const div = document.createElement("div");
-          div.className = "quiz-item";
-          div.innerHTML = `
-            <div><b>Q${i + 1}:</b> ${q.question}</div>
-            <div class="actions">
-              <button onclick="editQuestion(${i})">Edit</button>
-              <button onclick="deleteQuestion(${i})">Delete</button>
-            </div>`;
-          quizListEl.appendChild(div);
-        });
-      }
+    function showPage(id) {
+      document.getElementById("subjectPage").style.display = "none";
+      document.getElementById("topicPage").style.display = "none";
+      document.getElementById("quizCard").style.display = "none";
+      document.getElementById("referralPage").style.display = "none";
+      document.getElementById(id).style.display = "block";
     }
 
     async function loadSubjects() {
       const snap = await getDoc(doc(db, "data", "subjects"));
       subjectListEl.innerHTML = "";
       if (snap.exists()) {
-        snap.data().list.forEach((s, i) => {
-          const div = document.createElement("div");
-          div.className = "subject-item";
-          div.innerHTML = `
-            <div>${s}</div>
-            <div class="actions">
-              <button onclick="editSubject(${i})">Edit</button>
-              <button onclick="deleteSubject(${i})">Delete</button>
-            </div>`;
-          subjectListEl.appendChild(div);
+        snap.data().list.forEach(sub => {
+          const btn = document.createElement("button");
+          btn.className = "button";
+          btn.textContent = sub;
+          btn.onclick = () => loadTopics(sub);
+          subjectListEl.appendChild(btn);
         });
       }
     }
 
-    window.editQuestion = async (index) => {
+    function loadTopics(subject) {
+      topicListEl.innerHTML = "";
+      ["Topic 1", "Topic 2", "Topic 3"].forEach(t => {
+        const btn = document.createElement("button");
+        btn.className = "button";
+        btn.textContent = t;
+        btn.onclick = () => startQuiz();
+        topicListEl.appendChild(btn);
+      });
+      showPage("topicPage");
+    }
+
+    async function startQuiz() {
       const snap = await getDoc(doc(db, "data", "quiz"));
       if (snap.exists()) {
-        const q = snap.data().questions[index];
-        questionInput.value = q.question;
-        optionsInput.value = q.options.join(", ");
-        answerInput.value = q.answer;
-        solutionInput.value = q.solution;
-        editQuestionIndex = index;
+        questions = snap.data().questions || [];
+        currentIndex = 0;
+        showQuestion();
+        showPage("quizCard");
       }
-    };
+    }
 
-    window.deleteQuestion = async (index) => {
-      if (!confirm("Delete this question?")) return;
-      const quizRef = doc(db, "data", "quiz");
-      const snap = await getDoc(quizRef);
-      if (snap.exists()) {
-        let questions = snap.data().questions;
-        questions.splice(index, 1);
-        await setDoc(quizRef, { questions });
-        loadQuiz();
+    function showQuestion() {
+      if (currentIndex >= questions.length) {
+        alert("Quiz Finished!");
+        showPage("subjectPage");
+        return;
       }
-    };
+      const q = questions[currentIndex];
+      questionEl.textContent = q.question;
+      solutionEl.textContent = "";
+      optionsEl.innerHTML = "";
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement("button");
+        btn.className = "button";
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(i);
+        optionsEl.appendChild(btn);
+      });
+      startTimer();
+    }
 
-    window.editSubject = async (index) => {
-      const snap = await getDoc(doc(db, "data", "subjects"));
-      if (snap.exists()) {
-        subjectInput.value = snap.data().list[index];
-        editSubjectIndex = index;
+    function startTimer() {
+      clearInterval(timerInterval);
+      timer = 10;
+      document.getElementById("timer").textContent = `⏱ ${timer}s`;
+      document.getElementById("progressBar").style.width = "100%";
+
+      timerInterval = setInterval(() => {
+        timer--;
+        document.getElementById("timer").textContent = `⏱ ${timer}s`;
+        document.getElementById("progressBar").style.width = `${(timer / 10) * 100}%`;
+        if (timer <= 0) {
+          clearInterval(timerInterval);
+          nextQuestion();
+        }
+      }, 1000);
+    }
+
+    function checkAnswer(i) {
+      const q = questions[currentIndex];
+      if (i === q.answer) {
+        coins++;
+        solutionEl.style.color = "#0f0";
+        solutionEl.textContent = "✅ Correct! " + q.solution;
+      } else {
+        coins--;
+        solutionEl.style.color = "#f00";
+        solutionEl.textContent = "❌ Wrong! " + q.solution;
       }
-    };
+      localStorage.setItem("coins", coins);
+      coinsEl.textContent = coins;
+    }
 
-    window.deleteSubject = async (index) => {
-      if (!confirm("Delete this subject?")) return;
-      const subjectRef = doc(db, "data", "subjects");
-      const snap = await getDoc(subjectRef);
-      if (snap.exists()) {
-        let list = snap.data().list;
-        list.splice(index, 1);
-        await setDoc(subjectRef, { list });
-        loadSubjects();
+    function nextQuestion() {
+      currentIndex++;
+      showQuestion();
+    }
+
+    function setupReferral() {
+      const userId = localStorage.getItem("userId") || Math.random().toString(36).substr(2, 9);
+      localStorage.setItem("userId", userId);
+      refLink.value = `${window.location.origin}?ref=${userId}`;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get("ref");
+      if (ref && ref !== userId && !localStorage.getItem("refGiven")) {
+        coins += 100;
+        localStorage.setItem("coins", coins);
+        coinsEl.textContent = coins;
+        localStorage.setItem("refGiven", "true");
+        alert("🎁 You received 100 coins from referral!");
       }
-    };
+    }
 
-    loadQuiz();
     loadSubjects();
+    setupReferral();
+    showPage("subjectPage");
   </script>
 </body>
 </html>
