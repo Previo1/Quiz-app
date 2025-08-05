@@ -5,30 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>⚡ Quiz App</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    body { background: #000; color: #0ff; font-family: 'Poppins', sans-serif; text-align: center; }
-    .hidden { display: none; }
-    .btn {
-      background: #0ff;
-      color: #000;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 15px;
-      margin: 10px;
-      cursor: pointer;
-      font-weight: bold;
-      box-shadow: 0 0 10px #0ff;
-    }
-    .btn:hover { background: #00f; color: #fff; }
-    .container {
-      margin: 20px auto;
-      padding: 15px;
-      max-width: 500px;
-      background: rgba(20, 20, 20, 0.9);
-      border-radius: 10px;
-      box-shadow: 0 0 15px #0ff;
-    }
-  </style>
 </head>
 <body>
   <h1>⚡ Quiz App</h1>
@@ -66,43 +42,35 @@
     <button class="btn" onclick="showPage('homePage')">Back</button>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyD0KSh__yrwZYDOKU85ltV-zOBpF6gLvm0",
-      authDomain: "quizapp-f1224.firebaseapp.com",
-      projectId: "quizapp-f1224",
-      storageBucket: "quizapp-f1224.firebasestorage.app",
-      messagingSenderId: "432922180972",
-      appId: "1:432922180972:web:e816869f5efc03f32f4749",
-      measurementId: "G-S3XZW4KSZ6"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
+  <script>
     let coins = 0;
-    let quizData = [];
+    let quizData = {
+      "Math": [
+        { question: "2 + 2 = ?", options: ["3", "4", "5", "6"], answer: 1, solution: "2 + 2 = 4" },
+        { question: "5 × 3 = ?", options: ["8", "10", "15", "20"], answer: 2, solution: "5 × 3 = 15" }
+      ],
+      "Science": [
+        { question: "Water formula?", options: ["H2O", "CO2", "O2", "H2"], answer: 0, solution: "Water = H2O" },
+        { question: "Planet closest to Sun?", options: ["Earth", "Venus", "Mercury", "Mars"], answer: 2, solution: "Mercury is closest" }
+      ]
+    };
+    let currentSubject = "";
     let currentQuestion = 0;
 
-    window.onload = async function () {
+    window.onload = function () {
       loadCoins();
-      await loadSubjects();
+      loadSubjects();
     };
 
-    // Show Page function
-    window.showPage = function (pageId) {
+    function showPage(pageId) {
       document.getElementById('homePage').classList.add('hidden');
       document.getElementById('quizPage').classList.add('hidden');
       document.getElementById('referralPage').classList.add('hidden');
       document.getElementById('walletPage').classList.add('hidden');
       document.getElementById(pageId).classList.remove('hidden');
       document.getElementById('walletCoins').innerText = coins;
-    };
+    }
 
-    // Load coins
     function loadCoins() {
       const savedCoins = localStorage.getItem("coins");
       coins = savedCoins ? parseInt(savedCoins) : 0;
@@ -114,42 +82,27 @@
       document.getElementById("coins").innerText = coins;
     }
 
-    // Load subjects from Firebase
-    async function loadSubjects() {
-      const ref = doc(db, "data", "subjects");
-      const snap = await getDoc(ref);
+    function loadSubjects() {
       const subjectsDiv = document.getElementById("subjects");
-
-      if (snap.exists()) {
-        const subjects = snap.data().list || [];
-        subjectsDiv.innerHTML = "";
-        subjects.forEach(sub => {
-          const btn = document.createElement("button");
-          btn.innerText = sub;
-          btn.classList.add("btn");
-          btn.onclick = () => loadQuiz(sub);
-          subjectsDiv.appendChild(btn);
-        });
-      } else {
-        subjectsDiv.innerHTML = "<p>No subjects available.</p>";
+      subjectsDiv.innerHTML = "";
+      for (let subject in quizData) {
+        const btn = document.createElement("button");
+        btn.innerText = subject;
+        btn.classList.add("btn");
+        btn.onclick = () => startQuiz(subject);
+        subjectsDiv.appendChild(btn);
       }
     }
 
-    // Load quiz from Firebase
-    async function loadQuiz(subject) {
-      const ref = doc(db, "data", "quiz");
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        quizData = snap.data().questions || [];
-        currentQuestion = 0;
-        showQuestion();
-        showPage("quizPage");
-      }
+    function startQuiz(subject) {
+      currentSubject = subject;
+      currentQuestion = 0;
+      showQuestion();
+      showPage("quizPage");
     }
 
-    // Show question
     function showQuestion() {
-      const q = quizData[currentQuestion];
+      const q = quizData[currentSubject][currentQuestion];
       document.getElementById("questionText").innerText = q.question;
       const optionsDiv = document.getElementById("options");
       optionsDiv.innerHTML = "";
@@ -162,7 +115,6 @@
       });
     }
 
-    // Check answer
     function checkAnswer(selected, correct, solution) {
       if (selected === correct) {
         coins++;
@@ -175,27 +127,25 @@
       sol.classList.remove("hidden");
     }
 
-    // Next question
-    window.nextQuestion = function () {
+    function nextQuestion() {
       currentQuestion++;
       const sol = document.getElementById("solution");
       sol.classList.add("hidden");
-      if (currentQuestion < quizData.length) {
+      if (currentQuestion < quizData[currentSubject].length) {
         showQuestion();
       } else {
         alert("Quiz completed!");
         showPage("homePage");
       }
-    };
+    }
 
-    // Referral system
-    window.generateReferral = function () {
+    function generateReferral() {
       const referralCode = "ref-" + Math.random().toString(36).substr(2, 6);
       document.getElementById("referralLink").innerText = 
         window.location.origin + "?ref=" + referralCode;
       coins += 100;
       saveCoins();
-    };
+    }
   </script>
 </body>
 </html>
