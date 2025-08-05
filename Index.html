@@ -3,58 +3,67 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quiz App</title>
+  <title>⚡ Quiz App</title>
+  <link rel="stylesheet" href="style.css">
   <style>
-    body { font-family: 'Poppins', sans-serif; margin: 0; background: #000; color: #0ff; text-align: center; }
-    h1 { text-shadow: 0 0 15px #0ff; }
-    .container { padding: 20px; }
-    .button { background: #0ff; color: #000; border: none; padding: 10px 20px; border-radius: 8px; margin: 5px; cursor: pointer; }
-    .button:hover { background: #00f; color: #fff; }
-    #quizCard, #subjectPage, #topicPage { display: none; }
-    .options button { display: block; width: 100%; margin: 10px 0; }
-    #wallet { font-size: 18px; margin-bottom: 10px; }
-    #progressBarContainer { width: 100%; height: 8px; background: rgba(255, 255, 255, 0.2); border-radius: 5px; margin-bottom: 10px; }
-    #progressBar { width: 100%; height: 100%; background: #0ff; border-radius: 5px; transition: width 1s linear; }
-    .footer { position: fixed; bottom: 0; width: 100%; background: rgba(20, 20, 20, 0.95); display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #0ff; }
-    .footer button { flex: 1; margin: 0 5px; padding: 10px; }
+    body { background: #000; color: #0ff; font-family: 'Poppins', sans-serif; text-align: center; }
+    .hidden { display: none; }
+    .btn {
+      background: #0ff;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 0 10px #0ff;
+    }
+    .btn:hover { background: #00f; color: #fff; }
+    .container {
+      margin: 20px auto;
+      padding: 15px;
+      max-width: 500px;
+      background: rgba(20, 20, 20, 0.9);
+      border-radius: 10px;
+      box-shadow: 0 0 15px #0ff;
+    }
   </style>
 </head>
 <body>
   <h1>⚡ Quiz App</h1>
-  <div id="wallet">💰 Coins: <span id="coins">0</span></div>
-  
-  <div id="subjectPage" class="container">
+  <p>💰 Coins: <span id="coins">0</span></p>
+
+  <!-- Home Page -->
+  <div id="homePage" class="container">
     <h2>Select Subject</h2>
-    <div id="subjectList"></div>
+    <div id="subjects"></div>
+    <button class="btn" onclick="showPage('referralPage')">Referral</button>
+    <button class="btn" onclick="showPage('walletPage')">Wallet</button>
   </div>
 
-  <div id="topicPage" class="container">
-    <h2>Select Topic</h2>
-    <div id="topicList"></div>
+  <!-- Quiz Page -->
+  <div id="quizPage" class="container hidden">
+    <h2 id="questionText"></h2>
+    <div id="options"></div>
+    <p id="solution" class="hidden"></p>
+    <button class="btn" onclick="nextQuestion()">Next</button>
+    <button class="btn" onclick="showPage('homePage')">Back</button>
   </div>
 
-  <div id="quizCard" class="container">
-    <h2 id="question"></h2>
-    <div id="timer">⏱ 10s</div>
-    <div id="progressBarContainer"><div id="progressBar"></div></div>
-    <div class="options" id="options"></div>
-    <div id="solution" style="margin-top:10px; color:#0f0;"></div>
-    <button class="button" onclick="nextQuestion()">Next</button>
-  </div>
-
-  <div id="referralPage" class="container" style="display:none;">
+  <!-- Referral Page -->
+  <div id="referralPage" class="container hidden">
     <h2>Referral System</h2>
-    <p>Your referral link:</p>
-    <input type="text" id="refLink" readonly style="width:100%; text-align:center;">
-    <p>Share this link with your friends! You earn 100 coins per referral.</p>
+    <button class="btn" onclick="generateReferral()">Generate Referral Link</button>
+    <p id="referralLink"></p>
+    <button class="btn" onclick="showPage('homePage')">Back</button>
   </div>
 
-  <div class="footer">
-    <button onclick="showPage('subjectPage')">📚 Subjects</button>
-    <button onclick="showPage('topicPage')">📖 Topics</button>
-    <button onclick="showPage('quizCard')">📝 Quiz</button>
-    <button onclick="showPage('referralPage')">🤝 Referral</button>
-    <button onclick="showPage('walletPage')">💰 Wallet</button>
+  <!-- Wallet Page -->
+  <div id="walletPage" class="container hidden">
+    <h2>Wallet</h2>
+    <p>Available Coins: <span id="walletCoins">0</span></p>
+    <button class="btn" onclick="showPage('homePage')">Back</button>
   </div>
 
   <script type="module">
@@ -74,142 +83,119 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const subjectListEl = document.getElementById("subjectList");
-    const topicListEl = document.getElementById("topicList");
-    const questionEl = document.getElementById("question");
-    const optionsEl = document.getElementById("options");
-    const coinsEl = document.getElementById("coins");
-    const solutionEl = document.getElementById("solution");
-    const refLink = document.getElementById("refLink");
+    let coins = 0;
+    let quizData = [];
+    let currentQuestion = 0;
 
-    let coins = parseInt(localStorage.getItem("coins") || "0");
-    let questions = [];
-    let currentIndex = 0;
-    let timer = 10;
-    let timerInterval;
+    window.onload = async function () {
+      loadCoins();
+      await loadSubjects();
+    };
 
-    coinsEl.textContent = coins;
+    // Show Page function
+    window.showPage = function (pageId) {
+      document.getElementById('homePage').classList.add('hidden');
+      document.getElementById('quizPage').classList.add('hidden');
+      document.getElementById('referralPage').classList.add('hidden');
+      document.getElementById('walletPage').classList.add('hidden');
+      document.getElementById(pageId).classList.remove('hidden');
+      document.getElementById('walletCoins').innerText = coins;
+    };
 
-    function showPage(id) {
-      document.getElementById("subjectPage").style.display = "none";
-      document.getElementById("topicPage").style.display = "none";
-      document.getElementById("quizCard").style.display = "none";
-      document.getElementById("referralPage").style.display = "none";
-      document.getElementById(id).style.display = "block";
+    // Load coins
+    function loadCoins() {
+      const savedCoins = localStorage.getItem("coins");
+      coins = savedCoins ? parseInt(savedCoins) : 0;
+      document.getElementById("coins").innerText = coins;
     }
 
+    function saveCoins() {
+      localStorage.setItem("coins", coins);
+      document.getElementById("coins").innerText = coins;
+    }
+
+    // Load subjects from Firebase
     async function loadSubjects() {
-      const snap = await getDoc(doc(db, "data", "subjects"));
-      subjectListEl.innerHTML = "";
+      const ref = doc(db, "data", "subjects");
+      const snap = await getDoc(ref);
+      const subjectsDiv = document.getElementById("subjects");
+
       if (snap.exists()) {
-        snap.data().list.forEach(sub => {
+        const subjects = snap.data().list || [];
+        subjectsDiv.innerHTML = "";
+        subjects.forEach(sub => {
           const btn = document.createElement("button");
-          btn.className = "button";
-          btn.textContent = sub;
-          btn.onclick = () => loadTopics(sub);
-          subjectListEl.appendChild(btn);
+          btn.innerText = sub;
+          btn.classList.add("btn");
+          btn.onclick = () => loadQuiz(sub);
+          subjectsDiv.appendChild(btn);
         });
+      } else {
+        subjectsDiv.innerHTML = "<p>No subjects available.</p>";
       }
     }
 
-    function loadTopics(subject) {
-      topicListEl.innerHTML = "";
-      ["Topic 1", "Topic 2", "Topic 3"].forEach(t => {
-        const btn = document.createElement("button");
-        btn.className = "button";
-        btn.textContent = t;
-        btn.onclick = () => startQuiz();
-        topicListEl.appendChild(btn);
-      });
-      showPage("topicPage");
-    }
-
-    async function startQuiz() {
-      const snap = await getDoc(doc(db, "data", "quiz"));
+    // Load quiz from Firebase
+    async function loadQuiz(subject) {
+      const ref = doc(db, "data", "quiz");
+      const snap = await getDoc(ref);
       if (snap.exists()) {
-        questions = snap.data().questions || [];
-        currentIndex = 0;
+        quizData = snap.data().questions || [];
+        currentQuestion = 0;
         showQuestion();
-        showPage("quizCard");
+        showPage("quizPage");
       }
     }
 
+    // Show question
     function showQuestion() {
-      if (currentIndex >= questions.length) {
-        alert("Quiz Finished!");
-        showPage("subjectPage");
-        return;
-      }
-      const q = questions[currentIndex];
-      questionEl.textContent = q.question;
-      solutionEl.textContent = "";
-      optionsEl.innerHTML = "";
+      const q = quizData[currentQuestion];
+      document.getElementById("questionText").innerText = q.question;
+      const optionsDiv = document.getElementById("options");
+      optionsDiv.innerHTML = "";
       q.options.forEach((opt, i) => {
         const btn = document.createElement("button");
-        btn.className = "button";
-        btn.textContent = opt;
-        btn.onclick = () => checkAnswer(i);
-        optionsEl.appendChild(btn);
+        btn.innerText = opt;
+        btn.classList.add("btn");
+        btn.onclick = () => checkAnswer(i, q.answer, q.solution);
+        optionsDiv.appendChild(btn);
       });
-      startTimer();
     }
 
-    function startTimer() {
-      clearInterval(timerInterval);
-      timer = 10;
-      document.getElementById("timer").textContent = `⏱ ${timer}s`;
-      document.getElementById("progressBar").style.width = "100%";
-
-      timerInterval = setInterval(() => {
-        timer--;
-        document.getElementById("timer").textContent = `⏱ ${timer}s`;
-        document.getElementById("progressBar").style.width = `${(timer / 10) * 100}%`;
-        if (timer <= 0) {
-          clearInterval(timerInterval);
-          nextQuestion();
-        }
-      }, 1000);
-    }
-
-    function checkAnswer(i) {
-      const q = questions[currentIndex];
-      if (i === q.answer) {
+    // Check answer
+    function checkAnswer(selected, correct, solution) {
+      if (selected === correct) {
         coins++;
-        solutionEl.style.color = "#0f0";
-        solutionEl.textContent = "✅ Correct! " + q.solution;
       } else {
-        coins--;
-        solutionEl.style.color = "#f00";
-        solutionEl.textContent = "❌ Wrong! " + q.solution;
+        coins = Math.max(0, coins - 1);
       }
-      localStorage.setItem("coins", coins);
-      coinsEl.textContent = coins;
+      saveCoins();
+      const sol = document.getElementById("solution");
+      sol.innerText = "Solution: " + solution;
+      sol.classList.remove("hidden");
     }
 
-    function nextQuestion() {
-      currentIndex++;
-      showQuestion();
-    }
-
-    function setupReferral() {
-      const userId = localStorage.getItem("userId") || Math.random().toString(36).substr(2, 9);
-      localStorage.setItem("userId", userId);
-      refLink.value = `${window.location.origin}?ref=${userId}`;
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const ref = urlParams.get("ref");
-      if (ref && ref !== userId && !localStorage.getItem("refGiven")) {
-        coins += 100;
-        localStorage.setItem("coins", coins);
-        coinsEl.textContent = coins;
-        localStorage.setItem("refGiven", "true");
-        alert("🎁 You received 100 coins from referral!");
+    // Next question
+    window.nextQuestion = function () {
+      currentQuestion++;
+      const sol = document.getElementById("solution");
+      sol.classList.add("hidden");
+      if (currentQuestion < quizData.length) {
+        showQuestion();
+      } else {
+        alert("Quiz completed!");
+        showPage("homePage");
       }
-    }
+    };
 
-    loadSubjects();
-    setupReferral();
-    showPage("subjectPage");
+    // Referral system
+    window.generateReferral = function () {
+      const referralCode = "ref-" + Math.random().toString(36).substr(2, 6);
+      document.getElementById("referralLink").innerText = 
+        window.location.origin + "?ref=" + referralCode;
+      coins += 100;
+      saveCoins();
+    };
   </script>
 </body>
 </html>
