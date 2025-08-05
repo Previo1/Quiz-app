@@ -3,8 +3,8 @@ import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/fir
 const auth = getAuth();
 
 // Admin login prompt
-const email = prompt("Enter Admin Email: rudakiyapiyush1@gmail.com");
-const password = prompt("Enter Admin Password:admin123");
+const email = prompt("rudakiyapiyush1@gmail.com");
+const password = prompt("admin123");
 
 signInWithEmailAndPassword(auth, email, password)
   .then(() => {
