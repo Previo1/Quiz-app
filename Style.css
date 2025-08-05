@@ -1,79 +1,102 @@
-body {
-  font-family: 'Poppins', sans-serif;
+/* General reset */
+* {
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Body styling */
+body {
   background: #000;
   color: #0ff;
   text-align: center;
-}
-
-h1 {
-  text-shadow: 0 0 15px #0ff;
-}
-
-.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   padding: 20px;
 }
 
-.button {
+/* App title neon glow */
+h1 {
+  font-size: 2.5rem;
+  text-shadow: 0 0 10px #0ff, 0 0 20px #00ffff, 0 0 30px #00f;
+  margin-bottom: 10px;
+  margin-top: 10px;
+}
+
+/* Coins display */
+p {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  color: #0ff;
+}
+
+/* Container design */
+.container {
+  background: rgba(20, 20, 20, 0.9);
+  border-radius: 10px;
+  box-shadow: 0 0 15px #0ff;
+  padding: 20px;
+  width: 90%;
+  max-width: 500px;
+  margin-bottom: 20px;
+  animation: fadeIn 0.7s ease-in-out;
+}
+
+/* Buttons */
+.btn {
   background: #0ff;
   color: #000;
   border: none;
-  padding: 10px 20px;
   border-radius: 8px;
-  margin: 5px;
+  padding: 12px 18px;
+  margin: 8px;
   cursor: pointer;
-  transition: 0.3s;
+  font-weight: bold;
+  font-size: 1rem;
+  box-shadow: 0 0 10px #0ff, 0 0 15px #00f inset;
+  transition: transform 0.2s ease, background 0.3s;
 }
 
-.button:hover {
+.btn:hover {
   background: #00f;
   color: #fff;
+  transform: scale(1.05);
 }
 
-#quizCard, #subjectPage, #topicPage {
+/* Hidden class */
+.hidden {
   display: none;
 }
 
-.options button {
-  display: block;
-  width: 100%;
-  margin: 10px 0;
+/* Solution text */
+#solution {
+  color: #0ff;
+  margin-top: 10px;
+  font-size: 1rem;
+  text-shadow: 0 0 10px #0ff;
 }
 
-#wallet {
-  font-size: 18px;
-  margin-bottom: 10px;
+/* Referral link */
+#referralLink {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #0ff;
+  word-wrap: break-word;
+  text-shadow: 0 0 10px #0ff;
 }
 
-#progressBarContainer {
-  width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  margin-bottom: 10px;
-}
-
-#progressBar {
-  width: 100%;
-  height: 100%;
-  background: #0ff;
-  border-radius: 5px;
-  transition: width 1s linear;
-}
-
-.footer {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  background: rgba(20, 20, 20, 0.95);
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 0;
-  border-top: 1px solid #0ff;
-}
-
-.footer button {
-  flex: 1;
-  margin: 0 5px;
-  padding: 10px;
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
